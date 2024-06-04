@@ -89,27 +89,22 @@ func (q *Queries) InsertContactInfo(ctx context.Context, arg InsertContactInfoPa
 
 const updateContactToSecondary = `-- name: UpdateContactToSecondary :one
 UPDATE contact
-SET linked_id = $1, link_precedence = $2
+SET linked_id = $1, link_precedence = 'secondary'
 WHERE
-    ($3 IS NOT NULL AND email = $3)
-    OR ($4 IS NOT NULL AND phone_number = $4)
+    NULLIF($2, '') IS NULL OR email = NULLIF($2, '')
+    OR
+    NULLIF($3, '') IS NULL OR phone_number = NULLIF($3, '')
 RETURNING id
 `
 
 type UpdateContactToSecondaryParams struct {
-	LinkedID       *int32             `json:"linked_id"`
-	LinkPrecedence LinkPrecedenceEnum `json:"link_precedence"`
-	Column3        interface{}        `json:"column_3"`
-	Column4        interface{}        `json:"column_4"`
+	LinkedID *int32      `json:"linked_id"`
+	Column2  interface{} `json:"column_2"`
+	Column3  interface{} `json:"column_3"`
 }
 
 func (q *Queries) UpdateContactToSecondary(ctx context.Context, arg UpdateContactToSecondaryParams) (int32, error) {
-	row := q.db.QueryRow(ctx, updateContactToSecondary,
-		arg.LinkedID,
-		arg.LinkPrecedence,
-		arg.Column3,
-		arg.Column4,
-	)
+	row := q.db.QueryRow(ctx, updateContactToSecondary, arg.LinkedID, arg.Column2, arg.Column3)
 	var id int32
 	err := row.Scan(&id)
 	return id, err

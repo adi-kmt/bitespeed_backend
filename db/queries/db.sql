@@ -16,8 +16,9 @@ RETURNING id;
 
 -- name: UpdateContactToSecondary :one
 UPDATE contact
-SET linked_id = $1, link_precedence = $2
+SET linked_id = $1, link_precedence = 'secondary'
 WHERE
-    ($3 IS NOT NULL AND email = $3)
-    OR ($4 IS NOT NULL AND phone_number = $4)
+    NULLIF($2, '') IS NULL OR email = NULLIF($2, '')
+    OR
+    NULLIF($3, '') IS NULL OR phone_number = NULLIF($3, '')
 RETURNING id;

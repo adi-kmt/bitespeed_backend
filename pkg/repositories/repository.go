@@ -20,7 +20,7 @@ func NewRepository(q *db.Queries, conn *pgxpool.Pool) *Repository {
 	}
 }
 
-func (repository *Repository) GetAllContactsGivenPhoneOrEmail(ctx *fiber.Ctx, email string, phoneNumber string) ([]*db.GetContactInfoByEmailORPhoneRow, *entities.AppError) {
+func (repository *Repository) GetAllContactsGivenPhoneOrEmail(ctx *fiber.Ctx, email string, phoneNumber string) ([]entities.ContactDbRecord, *entities.AppError) {
 	contacts, err := repository.q.GetContactInfoByEmailORPhone(ctx.Context(), db.GetContactInfoByEmailORPhoneParams{
 		Column1: email,
 		Column2: phoneNumber,
@@ -29,10 +29,10 @@ func (repository *Repository) GetAllContactsGivenPhoneOrEmail(ctx *fiber.Ctx, em
 		log.Errorf("error getting contacts: %s", err.Error())
 		return nil, entities.InternalServerError("Error getting contacts")
 	}
-	return contacts, nil
+	return entities.CreateRecordFromGetContact(contacts), nil
 }
 
-func (repository *Repository) InsertContact(ctx *fiber.Ctx, email string, phoneNumber string, linkedId int32) (*db.GetContactInfoByEmailORPhoneRow, *entities.AppError) {
+func (repository *Repository) InsertContact(ctx *fiber.Ctx, email string, phoneNumber string, linkedId int32) (*entities.ContactDbRecord, *entities.AppError) {
 	// For primary items
 	if linkedId < 0 {
 		id, err := repository.q.InsertContactInfo(ctx.Context(), db.InsertContactInfoParams{
@@ -43,11 +43,7 @@ func (repository *Repository) InsertContact(ctx *fiber.Ctx, email string, phoneN
 			log.Errorf("error inserting contacts: %s", err.Error())
 			return nil, entities.InternalServerError("Error inserting contacts")
 		}
-		return &db.GetContactInfoByEmailORPhoneRow{
-			ID:          id,
-			Email:       &email,
-			PhoneNumber: &phoneNumber,
-		}, nil
+		return entities.NewContactDbRecord(id, email, phoneNumber, -1, ""), nil
 	} else {
 		id, err := repository.q.InsertContactInfo(ctx.Context(), db.InsertContactInfoParams{
 			Email:          &email,
@@ -59,15 +55,19 @@ func (repository *Repository) InsertContact(ctx *fiber.Ctx, email string, phoneN
 			log.Errorf("error inserting contacts: %s", err.Error())
 			return nil, entities.InternalServerError("Error inserting contacts")
 		}
-		return &db.GetContactInfoByEmailORPhoneRow{
-			ID:          id,
-			Email:       &email,
-			PhoneNumber: &phoneNumber,
-			LinkedID:    &linkedId,
-		}, nil
+		return entities.NewContactDbRecord(id, email, phoneNumber, linkedId, ""), nil
 	}
 }
 
-func (repository *Repository) UpdateContactToSecondary(ctx *fiber.Ctx, id int32) (*db.GetContactInfoByEmailORPhoneRow, *entities.AppError) {
-
+func (repository *Repository) UpdateContact(ctx *fiber.Ctx, linkedId int32, emailPhoneNumber ...string) (*entities.ContactDbRecord, *entities.AppError) {
+	id, err := repository.q.UpdateContactToSecondary(ctx.Context(), db.UpdateContactToSecondaryParams{
+		LinkedID: &linkedId,
+		Column2:  &emailPhoneNumber[0],
+		Column3:  &emailPhoneNumber[1],
+	})
+	if err != nil {
+		log.Errorf("error updating contacts: %s", err.Error())
+		return nil, entities.InternalServerError("Error updating contacts")
+	}
+	return entities.NewContactDbRecord(id, emailPhoneNumber[0], emailPhoneNumber[1], -1, ""), nil
 }
