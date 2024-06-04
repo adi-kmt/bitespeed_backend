@@ -15,3 +15,35 @@ Then run
 ```shell
 make db-migrate
 ```
+
+### Endpoints
+
+```json
+/identify
+
+POST Request with body 
+{
+    "email": "email@sample.com ",
+    "phoneNumber": "8070695"
+}
+
+with response
+
+{
+    "contact": {
+        "primaryContactId": 1,
+        "emails": [
+            "sample@email.com",
+            "email@sample.com "
+        ],
+        "phoneNumbers": [
+            "8070695",
+            "8070690"
+        ],
+        "secondaryContactNumbers": [
+            1,
+            2
+        ]
+    }
+}
+```

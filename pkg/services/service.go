@@ -29,14 +29,19 @@ func (service *Service) IdentifyUser(ctx *fiber.Ctx, email string, phoneNumber s
 		return nil, err
 	}
 
-	if len(contacts) == 0 {
-		return handleNoContacts(ctx, service.repo, email, phoneNumber)
-	}
-
 	var currentPrimary primaryItem
 	var emails []string
 	var phoneNumbers []string
 	var secondaryIds []int32
+
+	if phoneNumber == "" || email == "" {
+		checkAndGetNoOfPrimaries(contacts, email, phoneNumber, &currentPrimary)
+		return handleSinglePrimary(ctx, service.repo, contacts, currentPrimary, true, email, phoneNumber, &emails, &phoneNumbers, &secondaryIds)
+	}
+
+	if len(contacts) == 0 {
+		return handleNoContacts(ctx, service.repo, email, phoneNumber)
+	}
 
 	isItemAlreadyPresent, noOfPrimaries := checkAndGetNoOfPrimaries(contacts, email, phoneNumber, &currentPrimary)
 
@@ -101,6 +106,7 @@ func handleMultiplePrimaries(ctx *fiber.Ctx, repo *repositories.Repository, cont
 }
 
 func handleSinglePrimary(ctx *fiber.Ctx, repo *repositories.Repository, contacts []entities.ContactDbRecord, currentPrimary primaryItem, isItemAlreadyPresent bool, email string, phoneNumber string, emails *[]string, phoneNumbers *[]string, secondaryIds *[]int32) (*entities.ContactResponse, *entities.AppError) {
+	// If a new item is sent, then it will be inserted as secondary
 	if !isItemAlreadyPresent {
 		newContact, err := repo.InsertContactSecondary(ctx, email, phoneNumber, currentPrimary.id)
 		if err != nil {
@@ -111,7 +117,7 @@ func handleSinglePrimary(ctx *fiber.Ctx, repo *repositories.Repository, contacts
 		*emails = append(*emails, newContact.Email)
 	}
 	for _, contact := range contacts {
-		if contact.LinkedID == -1 && (contact.Email == email || contact.PhoneNumber == phoneNumber) {
+		if contact.LinkedID == -1 {
 			*phoneNumbers = append([]string{contact.PhoneNumber}, *phoneNumbers...)
 			*emails = append([]string{contact.Email}, *emails...)
 		} else {
