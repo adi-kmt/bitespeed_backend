@@ -1,6 +1,6 @@
 package db
 
-type DbConfig struct {
+type dbConfig struct {
 	Host     string
 	Port     string
 	Username string
@@ -8,8 +8,8 @@ type DbConfig struct {
 	Database string
 }
 
-func NewDbConfig(username, password, port, host, database string) *DbConfig {
-	return &DbConfig{
+func NewDbConfig(username, password, port, host, database string) *dbConfig {
+	return &dbConfig{
 		Host:     host,
 		Port:     port,
 		Username: username,

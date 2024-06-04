@@ -14,7 +14,7 @@ type DbConn struct {
 	DbQueries *db.Queries
 }
 
-func InitPool(config *DbConfig) *DbConn {
+func InitPool(config *dbConfig) *DbConn {
 	connectionString := fmt.Sprintf("postgresql://%s:%s@127.0.0.1:%s/%s?sslmode=disable",
 		config.Username, config.Password, config.Port, config.Database)
 
