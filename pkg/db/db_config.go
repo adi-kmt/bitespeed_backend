@@ -1,19 +1,19 @@
 package db
 
 type dbConfig struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-	Database string
+	host     string
+	port     string
+	username string
+	password string
+	database string
 }
 
 func NewDbConfig(username, password, port, host, database string) *dbConfig {
 	return &dbConfig{
-		Host:     host,
-		Port:     port,
-		Username: username,
-		Password: password,
-		Database: database,
+		host:     host,
+		port:     port,
+		username: username,
+		password: password,
+		database: database,
 	}
 }
