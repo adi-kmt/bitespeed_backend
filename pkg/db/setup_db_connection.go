@@ -16,7 +16,7 @@ type DbConn struct {
 
 func InitPool(config *dbConfig) *DbConn {
 	connectionString := fmt.Sprintf("postgresql://%s:%s@127.0.0.1:%s/%s?sslmode=disable",
-		config.username, config.password, config.port, config.database)
+		config.username, config.password, config.database, config.port)
 
 	ctx := context.Background()
 

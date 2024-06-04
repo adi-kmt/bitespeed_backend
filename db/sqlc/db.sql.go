@@ -15,14 +15,12 @@ const getContactInfoByEmailORPhone = `-- name: GetContactInfoByEmailORPhone :man
 SELECT id, email, phone_number, linked_id, created_at
 FROM contact
 WHERE
-    NULLIF($1, '') IS NULL OR email = NULLIF($1, '')
-    OR
-    NULLIF($2, '') IS NULL OR phone_number = NULLIF($2, '')
+ (email = $1 OR $1 = '') OR (phone_number = $2 OR $2 = '')
 `
 
 type GetContactInfoByEmailORPhoneParams struct {
-	Column1 interface{} `json:"column_1"`
-	Column2 interface{} `json:"column_2"`
+	Email       *string `json:"email"`
+	PhoneNumber *string `json:"phone_number"`
 }
 
 type GetContactInfoByEmailORPhoneRow struct {
@@ -34,7 +32,7 @@ type GetContactInfoByEmailORPhoneRow struct {
 }
 
 func (q *Queries) GetContactInfoByEmailORPhone(ctx context.Context, arg GetContactInfoByEmailORPhoneParams) ([]*GetContactInfoByEmailORPhoneRow, error) {
-	rows, err := q.db.Query(ctx, getContactInfoByEmailORPhone, arg.Column1, arg.Column2)
+	rows, err := q.db.Query(ctx, getContactInfoByEmailORPhone, arg.Email, arg.PhoneNumber)
 	if err != nil {
 		return nil, err
 	}
@@ -87,25 +85,19 @@ func (q *Queries) InsertContactInfo(ctx context.Context, arg InsertContactInfoPa
 	return id, err
 }
 
-const updateContactToSecondary = `-- name: UpdateContactToSecondary :one
+const updateContactToSecondary = `-- name: UpdateContactToSecondary :exec
 UPDATE contact
 SET linked_id = $1, link_precedence = 'secondary'
 WHERE
-    NULLIF($2, '') IS NULL OR email = NULLIF($2, '')
-    OR
-    NULLIF($3, '') IS NULL OR phone_number = NULLIF($3, '')
-RETURNING id
+    id = $2
 `
 
 type UpdateContactToSecondaryParams struct {
-	LinkedID *int32      `json:"linked_id"`
-	Column2  interface{} `json:"column_2"`
-	Column3  interface{} `json:"column_3"`
+	LinkedID *int32 `json:"linked_id"`
+	ID       int32  `json:"id"`
 }
 
-func (q *Queries) UpdateContactToSecondary(ctx context.Context, arg UpdateContactToSecondaryParams) (int32, error) {
-	row := q.db.QueryRow(ctx, updateContactToSecondary, arg.LinkedID, arg.Column2, arg.Column3)
-	var id int32
-	err := row.Scan(&id)
-	return id, err
+func (q *Queries) UpdateContactToSecondary(ctx context.Context, arg UpdateContactToSecondaryParams) error {
+	_, err := q.db.Exec(ctx, updateContactToSecondary, arg.LinkedID, arg.ID)
+	return err
 }

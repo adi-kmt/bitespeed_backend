@@ -25,9 +25,7 @@ func main() {
 
 	service := injection.InjectDependencies()
 
-	api := app.Group("/api/v1")
-
-	controllers.GetDefaultHandlers(api, service)
+	controllers.GetDefaultHandlers(app, service)
 	port, isErr := os.LookupEnv("API_PORT")
 	if !isErr {
 		port = "8080"

@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS contact (
     id SERIAL PRIMARY KEY,
     email VARCHAR(100),
     phone_number VARCHAR(20),
-    linked_id INTEGER,
+    linked_id INTEGER NULL,
     link_precedence link_precedence_enum NOT NULL DEFAULT 'primary',
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     updated_at TIMESTAMP NOT NULL DEFAULT now(),

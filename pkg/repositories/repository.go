@@ -24,8 +24,8 @@ func NewRepository(q *db.Queries, conn *pgxpool.Pool) *Repository {
 
 func (repository *Repository) GetAllContactsGivenPhoneOrEmail(ctx *fiber.Ctx, email string, phoneNumber string) ([]entities.ContactDbRecord, *entities.AppError) {
 	contacts, err := repository.q.GetContactInfoByEmailORPhone(ctx.Context(), db.GetContactInfoByEmailORPhoneParams{
-		Column1: email,
-		Column2: phoneNumber,
+		Email:       &email,
+		PhoneNumber: &phoneNumber,
 	})
 	if err != nil {
 		log.Errorf("error getting contacts: %s", err.Error())
@@ -36,8 +36,10 @@ func (repository *Repository) GetAllContactsGivenPhoneOrEmail(ctx *fiber.Ctx, em
 
 func (repository *Repository) InsertContactPrimary(ctx *fiber.Ctx, email string, phoneNumber string) (*entities.ContactDbRecord, *entities.AppError) {
 	id, err := repository.q.InsertContactInfo(ctx.Context(), db.InsertContactInfoParams{
-		Email:       &email,
-		PhoneNumber: &phoneNumber,
+		Email:          &email,
+		PhoneNumber:    &phoneNumber,
+		LinkedID:       nil,
+		LinkPrecedence: db.LinkPrecedenceEnumPrimary,
 	})
 	if err != nil {
 		log.Errorf("error inserting contacts: %s", err.Error())
@@ -60,15 +62,14 @@ func (repository *Repository) InsertContactSecondary(ctx *fiber.Ctx, email strin
 	return entities.NewContactDbRecord(id, email, phoneNumber, linkedId, time.Now()), nil
 }
 
-func (repository *Repository) UpdateContact(ctx *fiber.Ctx, linkedId int32, emailPhoneNumber ...string) (*entities.ContactDbRecord, *entities.AppError) {
-	id, err := repository.q.UpdateContactToSecondary(ctx.Context(), db.UpdateContactToSecondaryParams{
+func (repository *Repository) UpdateContact(ctx *fiber.Ctx, linkedId, id int32) *entities.AppError {
+	err := repository.q.UpdateContactToSecondary(ctx.Context(), db.UpdateContactToSecondaryParams{
 		LinkedID: &linkedId,
-		Column2:  &emailPhoneNumber[0],
-		Column3:  &emailPhoneNumber[1],
+		ID:       id,
 	})
 	if err != nil {
 		log.Errorf("error updating contacts: %s", err.Error())
-		return nil, entities.InternalServerError("Error updating contacts")
+		return entities.InternalServerError("Error updating contacts")
 	}
-	return entities.NewContactDbRecord(id, emailPhoneNumber[0], emailPhoneNumber[1], -1, time.Now()), nil
+	return nil
 }

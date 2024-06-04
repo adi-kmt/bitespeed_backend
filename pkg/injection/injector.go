@@ -21,7 +21,7 @@ func InjectDependencies() *services.Service {
 
 	db_name, isErr := os.LookupEnv("DB_NAME")
 	if !isErr {
-		db_name = "trains"
+		db_name = "bitespeed_db"
 	}
 
 	db_host, isErr := os.LookupEnv("DB_HOST")

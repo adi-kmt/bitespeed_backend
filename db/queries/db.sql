@@ -2,9 +2,7 @@
 SELECT id, email, phone_number, linked_id, created_at
 FROM contact
 WHERE
-    NULLIF($1, '') IS NULL OR email = NULLIF($1, '')
-    OR
-    NULLIF($2, '') IS NULL OR phone_number = NULLIF($2, '');
+ (email = $1 OR $1 = '') OR (phone_number = $2 OR $2 = '');
 
 -- name: InsertContactInfo :one
 INSERT INTO contact
@@ -14,11 +12,8 @@ VALUES
 ON CONFLICT DO NOTHING
 RETURNING id;
 
--- name: UpdateContactToSecondary :one
+-- name: UpdateContactToSecondary :exec
 UPDATE contact
 SET linked_id = $1, link_precedence = 'secondary'
 WHERE
-    NULLIF($2, '') IS NULL OR email = NULLIF($2, '')
-    OR
-    NULLIF($3, '') IS NULL OR phone_number = NULLIF($3, '')
-RETURNING id;
+    id = $2;

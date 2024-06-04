@@ -1,5 +1,7 @@
 package entities
 
+import "github.com/adi-kmt/bitespeed_backend/pkg/utils"
+
 type ContactResponse struct {
 	Contact Contact `json:"contact"`
 }
@@ -15,9 +17,9 @@ func NewContactResponse(primaryContactId int32, emails []string, phoneNumbers []
 	return &ContactResponse{
 		Contact{
 			PrimaryContactId:        primaryContactId,
-			Emails:                  emails,
-			PhoneNumbers:            phoneNumbers,
-			SecondaryContactNumbers: secondaryContactNumbers,
+			Emails:                  utils.UniqueSliceElements[string](emails),
+			PhoneNumbers:            utils.UniqueSliceElements[string](phoneNumbers),
+			SecondaryContactNumbers: utils.UniqueSliceElements[int32](secondaryContactNumbers),
 		},
 	}
 }

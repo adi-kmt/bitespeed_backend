@@ -56,15 +56,15 @@ func handleNoContacts(ctx *fiber.Ctx, repo *repositories.Repository, email strin
 }
 
 func checkAndGetNoOfPrimaries(contacts []entities.ContactDbRecord, email string, phoneNumber string, currentPrimary *primaryItem) (bool, int32) {
-	var isItemAlreadyPresent bool
-	var noOfPrimaries int32
+	var isItemAlreadyPresent bool = false
+	var noOfPrimaries int32 = 0
 
 	for _, contact := range contacts {
-		if contact.Email == email || contact.PhoneNumber == phoneNumber {
+		if contact.Email == email && contact.PhoneNumber == phoneNumber {
 			isItemAlreadyPresent = true
 		}
 		if contact.LinkedID == -1 {
-			if noOfPrimaries > 1 {
+			if noOfPrimaries >= 1 {
 				if currentPrimary.createdAt.After(contact.CreatedAt) {
 					currentPrimary.id = contact.ID
 					currentPrimary.createdAt = contact.CreatedAt
@@ -86,14 +86,15 @@ func handleMultiplePrimaries(ctx *fiber.Ctx, repo *repositories.Repository, cont
 
 	for _, contact := range contacts {
 		if contact.ID != currentPrimary.id {
-			newContact, err := repo.UpdateContact(ctx, currentPrimary.id, email, phoneNumber)
+			err := repo.UpdateContact(ctx, currentPrimary.id, contact.ID)
 			if err != nil {
 				return nil, err
 			}
-			emails = append(emails, newContact.Email)
-			phoneNumbers = append(phoneNumbers, newContact.PhoneNumber)
-			secondaryIds = append(secondaryIds, newContact.ID)
+		} else {
+			secondaryIds = append(secondaryIds, contact.ID)
 		}
+		emails = append(emails, contact.Email)
+		phoneNumbers = append(phoneNumbers, contact.PhoneNumber)
 	}
 
 	return entities.NewContactResponse(currentPrimary.id, emails, phoneNumbers, secondaryIds), nil
