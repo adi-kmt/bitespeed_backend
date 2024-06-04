@@ -8,7 +8,7 @@ import (
 
 type identifyUserRequest struct {
 	Email       string `json:"email"`
-	PhoneNumber int32  `json:"phoneNumber"`
+	PhoneNumber string `json:"phoneNumber"`
 }
 
 func IdentifyUser(service *services.Service) fiber.Handler {
@@ -18,6 +18,6 @@ func IdentifyUser(service *services.Service) fiber.Handler {
 			log.Errorf("error parsing request: %v", err)
 			return ctx.Status(fiber.StatusBadRequest).SendString("Error parsing request")
 		}
-		return nil
+		return service.IdentifyUser(ctx, request.Email, request.PhoneNumber)
 	}
 }
