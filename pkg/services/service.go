@@ -23,6 +23,7 @@ func (service *Service) IdentifyUser(ctx *fiber.Ctx, email string, phoneNumber s
 	if err != nil {
 		return nil, err
 	}
+	// If no items are present that match the query we create new contact
 	if len(contacts) == 0 {
 		newContact, err0 := service.repo.InsertContactPrimary(ctx, email, phoneNumber)
 		if err0 != nil {
@@ -30,9 +31,11 @@ func (service *Service) IdentifyUser(ctx *fiber.Ctx, email string, phoneNumber s
 		}
 		return entities.NewContactResponse(newContact.ID, []string{newContact.Email}, []string{newContact.PhoneNumber}, []int32{}), nil
 	} else if len(contacts) == 1 {
+		// If only one item is present that matches either the email or phone number, first we check if both match then we return
 		if contacts[0].Email == email && contacts[0].PhoneNumber == phoneNumber {
 			return entities.NewContactResponse(contacts[0].ID, []string{contacts[0].Email}, []string{contacts[0].PhoneNumber}, []int32{contacts[0].LinkedID}), nil
 		} else {
+			// IF both don't match, we create a new item with the primary id given above
 			newContact, err0 := service.repo.InsertContactSecondary(ctx, email, phoneNumber, contacts[0].ID)
 			if err0 != nil {
 				return nil, err0
@@ -44,6 +47,7 @@ func (service *Service) IdentifyUser(ctx *fiber.Ctx, email string, phoneNumber s
 		var phoneNumbers []string
 		var secondaryIds []int32
 		var noOfPrimaries int32 = 0
+		var isItemAlreadyPresent bool = false
 
 		type primaryItem struct {
 			id        int32
@@ -54,6 +58,9 @@ func (service *Service) IdentifyUser(ctx *fiber.Ctx, email string, phoneNumber s
 
 		// First we check if two primaries are present that can have same email or phone number
 		for _, contact := range contacts {
+			if contact.Email == email || contact.PhoneNumber == phoneNumber {
+				isItemAlreadyPresent = true
+			}
 			if contact.LinkedID == -1 {
 				if noOfPrimaries > 1 {
 					if currentPrimary.createdAt.After(contact.CreatedAt) {
@@ -61,6 +68,11 @@ func (service *Service) IdentifyUser(ctx *fiber.Ctx, email string, phoneNumber s
 							id:        contact.ID,
 							createdAt: contact.CreatedAt,
 						}
+					}
+				} else {
+					currentPrimary = primaryItem{
+						id:        contact.ID,
+						createdAt: contact.CreatedAt,
 					}
 				}
 				noOfPrimaries++
@@ -82,12 +94,18 @@ func (service *Service) IdentifyUser(ctx *fiber.Ctx, email string, phoneNumber s
 			}
 		} else {
 			for _, contact := range contacts {
+				// Since only one primary item is present, it can be possilbe that this is a new entry
+				if !isItemAlreadyPresent {
+					newContact, err0 := service.repo.InsertContactSecondary(ctx, email, phoneNumber, currentPrimary.id)
+					if err0 != nil {
+						return nil, err0
+					}
+					phoneNumbers = append(phoneNumbers, newContact.PhoneNumber)
+					secondaryIds = append(secondaryIds, newContact.ID)
+					emails = append(emails, newContact.Email)
+				}
 				if contact.LinkedID == -1 && (contact.Email == email || contact.PhoneNumber == phoneNumber) {
 					//If the item is a primary item, then we append it to the beginning of the list
-					currentPrimary = primaryItem{
-						id:        contact.ID,
-						createdAt: contact.CreatedAt,
-					}
 					phoneNumbers = append([]string{contact.PhoneNumber}, phoneNumbers...)
 					emails = append([]string{contact.Email}, emails...)
 				} else {
