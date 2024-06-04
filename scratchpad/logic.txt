@@ -1,0 +1,16 @@
+Basic Request-Response Setup:
+Username and Email in the POST request (both optional arguments)
+Irrespective of the request fields, the response should be identical
+
+DB particulars:
+1. By default an account is considered primary., with linked_id as NULL
+2. If another is present with same phone number/email, account is considered 'secondary'., with linked_id as 'id_of_primary'
+
+States:-
+1. If user does not exist => Create user with the information provided with "primary"
+2. if user exists:-
+    a. Has same email or phone number as request => Create new user with "secondary".
+    b. If both fields are same => Just return
+    c. If there exists two or more records
+    that match such that one email is matched
+    and other phone  => Account created first is condiered primary, other is secondary.
