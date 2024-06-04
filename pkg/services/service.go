@@ -18,104 +18,107 @@ func NewService(repository *repositories.Repository) *Service {
 	}
 }
 
+type primaryItem struct {
+	id        int32
+	createdAt time.Time
+}
+
 func (service *Service) IdentifyUser(ctx *fiber.Ctx, email string, phoneNumber string) (*entities.ContactResponse, *entities.AppError) {
 	contacts, err := service.repo.GetAllContactsGivenPhoneOrEmail(ctx, email, phoneNumber)
 	if err != nil {
 		return nil, err
 	}
-	// If no items are present that match the query we create new contact
+
 	if len(contacts) == 0 {
-		newContact, err0 := service.repo.InsertContactPrimary(ctx, email, phoneNumber)
-		if err0 != nil {
-			return nil, err0
-		}
-		return entities.NewContactResponse(newContact.ID, []string{newContact.Email}, []string{newContact.PhoneNumber}, []int32{}), nil
-	} else if len(contacts) == 1 {
-		// If only one item is present that matches either the email or phone number, first we check if both match then we return
-		if contacts[0].Email == email && contacts[0].PhoneNumber == phoneNumber {
-			return entities.NewContactResponse(contacts[0].ID, []string{contacts[0].Email}, []string{contacts[0].PhoneNumber}, []int32{contacts[0].LinkedID}), nil
-		} else {
-			// IF both don't match, we create a new item with the primary id given above
-			newContact, err0 := service.repo.InsertContactSecondary(ctx, email, phoneNumber, contacts[0].ID)
-			if err0 != nil {
-				return nil, err0
-			}
-			return entities.NewContactResponse(newContact.ID, []string{newContact.Email}, []string{newContact.PhoneNumber}, []int32{}), nil
-		}
-	} else {
-		var emails []string
-		var phoneNumbers []string
-		var secondaryIds []int32
-		var noOfPrimaries int32 = 0
-		var isItemAlreadyPresent bool = false
-
-		type primaryItem struct {
-			id        int32
-			createdAt time.Time
-		}
-
-		var currentPrimary primaryItem
-
-		// First we check if two primaries are present that can have same email or phone number
-		for _, contact := range contacts {
-			if contact.Email == email || contact.PhoneNumber == phoneNumber {
-				isItemAlreadyPresent = true
-			}
-			if contact.LinkedID == -1 {
-				if noOfPrimaries > 1 {
-					if currentPrimary.createdAt.After(contact.CreatedAt) {
-						currentPrimary = primaryItem{
-							id:        contact.ID,
-							createdAt: contact.CreatedAt,
-						}
-					}
-				} else {
-					currentPrimary = primaryItem{
-						id:        contact.ID,
-						createdAt: contact.CreatedAt,
-					}
-				}
-				noOfPrimaries++
-			}
-		}
-
-		if noOfPrimaries > 0 {
-			// Here we convert all the primaries to secondary, except the one created first.
-			for _, contact := range contacts {
-				if contact.ID != currentPrimary.id {
-					newContact, err0 := service.repo.UpdateContact(ctx, currentPrimary.id, email, phoneNumber)
-					if err0 != nil {
-						return nil, err0
-					}
-					emails = append(emails, newContact.Email)
-					phoneNumbers = append(phoneNumbers, newContact.PhoneNumber)
-					secondaryIds = append(secondaryIds, newContact.ID)
-				}
-			}
-		} else {
-			for _, contact := range contacts {
-				// Since only one primary item is present, it can be possilbe that this is a new entry
-				if !isItemAlreadyPresent {
-					newContact, err0 := service.repo.InsertContactSecondary(ctx, email, phoneNumber, currentPrimary.id)
-					if err0 != nil {
-						return nil, err0
-					}
-					phoneNumbers = append(phoneNumbers, newContact.PhoneNumber)
-					secondaryIds = append(secondaryIds, newContact.ID)
-					emails = append(emails, newContact.Email)
-				}
-				if contact.LinkedID == -1 && (contact.Email == email || contact.PhoneNumber == phoneNumber) {
-					//If the item is a primary item, then we append it to the beginning of the list
-					phoneNumbers = append([]string{contact.PhoneNumber}, phoneNumbers...)
-					emails = append([]string{contact.Email}, emails...)
-				} else {
-					// else append to end of the list
-					emails = append(emails, contact.Email)
-					phoneNumbers = append(phoneNumbers, contact.PhoneNumber)
-					secondaryIds = append(secondaryIds, contact.ID)
-				}
-			}
-		}
-		return entities.NewContactResponse(currentPrimary.id, emails, phoneNumbers, secondaryIds), nil
+		return handleNoContacts(ctx, service.repo, email, phoneNumber)
 	}
+
+	var currentPrimary primaryItem
+	var emails []string
+	var phoneNumbers []string
+	var secondaryIds []int32
+
+	isItemAlreadyPresent, noOfPrimaries := checkAndGetNoOfPrimaries(contacts, email, phoneNumber, &currentPrimary)
+
+	if noOfPrimaries > 1 {
+		return handleMultiplePrimaries(ctx, service.repo, contacts, currentPrimary, email, phoneNumber)
+	}
+
+	return handleSinglePrimary(ctx, service.repo, contacts, currentPrimary, isItemAlreadyPresent, email, phoneNumber, &emails, &phoneNumbers, &secondaryIds)
+}
+
+func handleNoContacts(ctx *fiber.Ctx, repo *repositories.Repository, email string, phoneNumber string) (*entities.ContactResponse, *entities.AppError) {
+	newContact, err := repo.InsertContactPrimary(ctx, email, phoneNumber)
+	if err != nil {
+		return nil, err
+	}
+	return entities.NewContactResponse(newContact.ID, []string{newContact.Email}, []string{newContact.PhoneNumber}, []int32{}), nil
+}
+
+func checkAndGetNoOfPrimaries(contacts []entities.ContactDbRecord, email string, phoneNumber string, currentPrimary *primaryItem) (bool, int32) {
+	var isItemAlreadyPresent bool
+	var noOfPrimaries int32
+
+	for _, contact := range contacts {
+		if contact.Email == email || contact.PhoneNumber == phoneNumber {
+			isItemAlreadyPresent = true
+		}
+		if contact.LinkedID == -1 {
+			if noOfPrimaries > 1 {
+				if currentPrimary.createdAt.After(contact.CreatedAt) {
+					currentPrimary.id = contact.ID
+					currentPrimary.createdAt = contact.CreatedAt
+				}
+			} else {
+				currentPrimary.id = contact.ID
+				currentPrimary.createdAt = contact.CreatedAt
+			}
+			noOfPrimaries++
+		}
+	}
+	return isItemAlreadyPresent, noOfPrimaries
+}
+
+func handleMultiplePrimaries(ctx *fiber.Ctx, repo *repositories.Repository, contacts []entities.ContactDbRecord, currentPrimary primaryItem, email string, phoneNumber string) (*entities.ContactResponse, *entities.AppError) {
+	var emails []string
+	var phoneNumbers []string
+	var secondaryIds []int32
+
+	for _, contact := range contacts {
+		if contact.ID != currentPrimary.id {
+			newContact, err := repo.UpdateContact(ctx, currentPrimary.id, email, phoneNumber)
+			if err != nil {
+				return nil, err
+			}
+			emails = append(emails, newContact.Email)
+			phoneNumbers = append(phoneNumbers, newContact.PhoneNumber)
+			secondaryIds = append(secondaryIds, newContact.ID)
+		}
+	}
+
+	return entities.NewContactResponse(currentPrimary.id, emails, phoneNumbers, secondaryIds), nil
+}
+
+func handleSinglePrimary(ctx *fiber.Ctx, repo *repositories.Repository, contacts []entities.ContactDbRecord, currentPrimary primaryItem, isItemAlreadyPresent bool, email string, phoneNumber string, emails *[]string, phoneNumbers *[]string, secondaryIds *[]int32) (*entities.ContactResponse, *entities.AppError) {
+	if !isItemAlreadyPresent {
+		newContact, err := repo.InsertContactSecondary(ctx, email, phoneNumber, currentPrimary.id)
+		if err != nil {
+			return nil, err
+		}
+		*phoneNumbers = append(*phoneNumbers, newContact.PhoneNumber)
+		*secondaryIds = append(*secondaryIds, newContact.ID)
+		*emails = append(*emails, newContact.Email)
+	}
+	for _, contact := range contacts {
+		if contact.LinkedID == -1 && (contact.Email == email || contact.PhoneNumber == phoneNumber) {
+			*phoneNumbers = append([]string{contact.PhoneNumber}, *phoneNumbers...)
+			*emails = append([]string{contact.Email}, *emails...)
+		} else {
+			*emails = append(*emails, contact.Email)
+			*phoneNumbers = append(*phoneNumbers, contact.PhoneNumber)
+			*secondaryIds = append(*secondaryIds, contact.ID)
+		}
+	}
+
+	return entities.NewContactResponse(currentPrimary.id, *emails, *phoneNumbers, *secondaryIds), nil
 }
