@@ -18,6 +18,11 @@ func IdentifyUser(service *services.Service) fiber.Handler {
 			log.Errorf("error parsing request: %v", err)
 			return ctx.Status(fiber.StatusBadRequest).SendString("Error parsing request")
 		}
-		return service.IdentifyUser(ctx, request.Email, request.PhoneNumber)
+		userData, err1 := service.IdentifyUser(ctx, request.Email, request.PhoneNumber)
+		if err1 != nil {
+			log.Errorf("error identifying user: %v", err1)
+			return ctx.Status(err1.Code).SendString(err1.Error())
+		}
+		return ctx.Status(200).JSON(userData)
 	}
 }

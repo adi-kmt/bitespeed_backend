@@ -1,6 +1,8 @@
 package entities
 
 import (
+	"time"
+
 	db "github.com/adi-kmt/bitespeed_backend/db/sqlc"
 )
 
@@ -9,10 +11,10 @@ type ContactDbRecord struct {
 	Email       string
 	PhoneNumber string
 	LinkedID    int32
-	CreatedAt   string
+	CreatedAt   time.Time
 }
 
-func NewContactDbRecord(id int32, email string, phoneNumber string, linkedID int32, createdAt string) *ContactDbRecord {
+func NewContactDbRecord(id int32, email string, phoneNumber string, linkedID int32, createdAt time.Time) *ContactDbRecord {
 	return &ContactDbRecord{
 		ID:          id,
 		Email:       email,
@@ -36,7 +38,7 @@ func CreateRecordFromGetContact(dbRow []*db.GetContactInfoByEmailORPhoneRow) []C
 			Email:       *contact.Email,
 			PhoneNumber: *contact.PhoneNumber,
 			LinkedID:    linkedIDString,
-			CreatedAt:   contact.CreatedAt.Time.String(),
+			CreatedAt:   contact.CreatedAt.Time,
 		})
 	}
 	return records

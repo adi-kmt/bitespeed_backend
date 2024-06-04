@@ -13,4 +13,4 @@ States:-
     b. If both fields are same => Just return
     c. If there exists two or more records
     that match such that one email is matched
-    and other phone  => Account created first is condiered primary, other is secondary.
+    and other phone  => Account created first is considered primary, other is secondary.

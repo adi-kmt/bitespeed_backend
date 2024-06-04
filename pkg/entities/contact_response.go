@@ -10,3 +10,14 @@ type Contact struct {
 	PhoneNumbers            []string `json:"phoneNumbers"`
 	SecondaryContactNumbers []int32  `json:"secondaryContactNumbers"`
 }
+
+func NewContactResponse(primaryContactId int32, emails []string, phoneNumbers []string, secondaryContactNumbers []int32) *ContactResponse {
+	return &ContactResponse{
+		Contact{
+			PrimaryContactId:        primaryContactId,
+			Emails:                  emails,
+			PhoneNumbers:            phoneNumbers,
+			SecondaryContactNumbers: secondaryContactNumbers,
+		},
+	}
+}
