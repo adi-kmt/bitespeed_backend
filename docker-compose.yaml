@@ -1,12 +1,42 @@
-version: '3.8'
-
 services:
+  fiber-application:
+    restart: always
+    image: docker-go:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: prod
+    ports:
+      - 8080:8080
+    environment:
+      - PROJECT_NAME=ir-loco-go
+      - API_PORT=8080
+      - DB_USER=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=bitespeed_db
+      - DB_PORT=5432
+      - DB_SSLMODE=disable
+    networks:
+      - application
+    depends_on:
+      - db
+    command: ./docker-go
   db:
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     image: postgres:latest
     container_name: bitespeed_postgres
     ports:
-      - 5432:5432
+      - 5432
     environment:
       - POSTGRES_PASSWORD=password
       - POSTGRES_USER=postgres
       - POSTGRES_DB=bitespeed_db
+    networks:
+      - application
+
+networks:
+  application:
+
+volumes:
+  postgres_data:

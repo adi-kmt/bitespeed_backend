@@ -12,5 +12,3 @@ CREATE TABLE IF NOT EXISTS contact (
 
     UNIQUE (email, phone_number)
 );
-
-CREATE INDEX contact_email_phone ON contact (email, phone_number);
