@@ -9,7 +9,8 @@ import (
 )
 
 type Querier interface {
-	GetContactInfoByEmailORPhone(ctx context.Context, arg GetContactInfoByEmailORPhoneParams) ([]*GetContactInfoByEmailORPhoneRow, error)
+	GetPrimaryContactInfoByEmailORPhone(ctx context.Context, arg GetPrimaryContactInfoByEmailORPhoneParams) ([]*GetPrimaryContactInfoByEmailORPhoneRow, error)
+	GetSecondaryContactInfo(ctx context.Context, linkedID *int32) ([]*GetSecondaryContactInfoRow, error)
 	InsertContactInfo(ctx context.Context, arg InsertContactInfoParams) (int32, error)
 	UpdateContactToSecondary(ctx context.Context, arg UpdateContactToSecondaryParams) error
 }

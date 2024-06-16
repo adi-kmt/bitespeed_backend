@@ -24,7 +24,27 @@ func NewContactDbRecord(id int32, email string, phoneNumber string, linkedID int
 	}
 }
 
-func CreateRecordFromGetContact(dbRow []*db.GetContactInfoByEmailORPhoneRow) []ContactDbRecord {
+func CreateRecordFromGetContact(dbRow []*db.GetPrimaryContactInfoByEmailORPhoneRow) []ContactDbRecord {
+	var records []ContactDbRecord
+	for _, contact := range dbRow {
+		var linkedIDString int32
+		if contact.LinkedID != nil {
+			linkedIDString = *contact.LinkedID
+		} else {
+			linkedIDString = -1
+		}
+		records = append(records, ContactDbRecord{
+			ID:          contact.ID,
+			Email:       *contact.Email,
+			PhoneNumber: *contact.PhoneNumber,
+			LinkedID:    linkedIDString,
+			CreatedAt:   contact.CreatedAt.Time,
+		})
+	}
+	return records
+}
+
+func CreateRecordFromGetContactSecondary(dbRow []*db.GetSecondaryContactInfoRow) []ContactDbRecord {
 	var records []ContactDbRecord
 	for _, contact := range dbRow {
 		var linkedIDString int32

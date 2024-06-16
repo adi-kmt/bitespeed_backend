@@ -11,19 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getContactInfoByEmailORPhone = `-- name: GetContactInfoByEmailORPhone :many
+const getPrimaryContactInfoByEmailORPhone = `-- name: GetPrimaryContactInfoByEmailORPhone :many
 SELECT id, email, phone_number, linked_id, created_at
 FROM contact
 WHERE
- (email = $1 OR $1 = '') OR (phone_number = $2 OR $2 = '')
+  ((email = $1 OR $1 = '')
+  OR (phone_number = $2 OR $2 = ''))
+  AND linked_id IS NULL
 `
 
-type GetContactInfoByEmailORPhoneParams struct {
+type GetPrimaryContactInfoByEmailORPhoneParams struct {
 	Email       *string `json:"email"`
 	PhoneNumber *string `json:"phone_number"`
 }
 
-type GetContactInfoByEmailORPhoneRow struct {
+type GetPrimaryContactInfoByEmailORPhoneRow struct {
 	ID          int32            `json:"id"`
 	Email       *string          `json:"email"`
 	PhoneNumber *string          `json:"phone_number"`
@@ -31,15 +33,56 @@ type GetContactInfoByEmailORPhoneRow struct {
 	CreatedAt   pgtype.Timestamp `json:"created_at"`
 }
 
-func (q *Queries) GetContactInfoByEmailORPhone(ctx context.Context, arg GetContactInfoByEmailORPhoneParams) ([]*GetContactInfoByEmailORPhoneRow, error) {
-	rows, err := q.db.Query(ctx, getContactInfoByEmailORPhone, arg.Email, arg.PhoneNumber)
+func (q *Queries) GetPrimaryContactInfoByEmailORPhone(ctx context.Context, arg GetPrimaryContactInfoByEmailORPhoneParams) ([]*GetPrimaryContactInfoByEmailORPhoneRow, error) {
+	rows, err := q.db.Query(ctx, getPrimaryContactInfoByEmailORPhone, arg.Email, arg.PhoneNumber)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*GetContactInfoByEmailORPhoneRow
+	var items []*GetPrimaryContactInfoByEmailORPhoneRow
 	for rows.Next() {
-		var i GetContactInfoByEmailORPhoneRow
+		var i GetPrimaryContactInfoByEmailORPhoneRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.PhoneNumber,
+			&i.LinkedID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, &i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getSecondaryContactInfo = `-- name: GetSecondaryContactInfo :many
+SELECT id, email, phone_number, linked_id, created_at
+FROM contact
+WHERE
+  linked_id = $1
+`
+
+type GetSecondaryContactInfoRow struct {
+	ID          int32            `json:"id"`
+	Email       *string          `json:"email"`
+	PhoneNumber *string          `json:"phone_number"`
+	LinkedID    *int32           `json:"linked_id"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetSecondaryContactInfo(ctx context.Context, linkedID *int32) ([]*GetSecondaryContactInfoRow, error) {
+	rows, err := q.db.Query(ctx, getSecondaryContactInfo, linkedID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []*GetSecondaryContactInfoRow
+	for rows.Next() {
+		var i GetSecondaryContactInfoRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Email,

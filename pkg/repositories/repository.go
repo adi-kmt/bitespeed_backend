@@ -22,8 +22,8 @@ func NewRepository(q *db.Queries, conn *pgxpool.Pool) *Repository {
 	}
 }
 
-func (repository *Repository) GetAllContactsGivenPhoneOrEmail(ctx *fiber.Ctx, email string, phoneNumber string) ([]entities.ContactDbRecord, *entities.AppError) {
-	contacts, err := repository.q.GetContactInfoByEmailORPhone(ctx.Context(), db.GetContactInfoByEmailORPhoneParams{
+func (repository *Repository) GetPrimaryContactsGivenEmailOrPhone(ctx *fiber.Ctx, email string, phoneNumber string) ([]entities.ContactDbRecord, *entities.AppError) {
+	contacts, err := repository.q.GetPrimaryContactInfoByEmailORPhone(ctx.Context(), db.GetPrimaryContactInfoByEmailORPhoneParams{
 		Email:       &email,
 		PhoneNumber: &phoneNumber,
 	})
@@ -32,6 +32,15 @@ func (repository *Repository) GetAllContactsGivenPhoneOrEmail(ctx *fiber.Ctx, em
 		return nil, entities.InternalServerError("Error getting contacts")
 	}
 	return entities.CreateRecordFromGetContact(contacts), nil
+}
+
+func (repository *Repository) GetSecondaryContacts(ctx *fiber.Ctx, primaryId int32) ([]entities.ContactDbRecord, *entities.AppError) {
+	contacts, err := repository.q.GetSecondaryContactInfo(ctx.Context(), &primaryId)
+	if err != nil {
+		log.Errorf("error getting contacts: %s", err.Error())
+		return nil, entities.InternalServerError("Error getting contacts")
+	}
+	return entities.CreateRecordFromGetContactSecondary(contacts), nil
 }
 
 func (repository *Repository) InsertContactPrimary(ctx *fiber.Ctx, email string, phoneNumber string) (*entities.ContactDbRecord, *entities.AppError) {
